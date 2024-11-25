@@ -1,6 +1,7 @@
 module Helium.CodeGeneration.Iridium.Parse.Parser where
 
 import Helium.Lvm.Common.Id(Id, idFromString)
+import Prelude hiding (elem, compare)
 --import Data.Maybe
 
 data ParseResult p = ResError !String !String | ResValue !p !String
@@ -137,11 +138,11 @@ pSome elem continue = do
 pWhitespace :: Parser ()
 pWhitespace = 
   do
-    pManySatisfy isWhitespace
+    _ <- pManySatisfy isWhitespace
     c <- lookahead
     if c == ';' then do
-      pChar
-      pManySatisfy (/= '\n')
+      _ <- pChar
+      _ <- pManySatisfy (/= '\n')
       pWhitespace
     else return ()
 
@@ -190,7 +191,7 @@ pSignedInt :: Parser Int
 pSignedInt = do
   c <- lookahead
   if c == '-' then do
-    pChar
+    _ <- pChar
     (0 -) <$> pUnsignedInt
   else
     pUnsignedInt
@@ -200,7 +201,7 @@ pArguments pArg = do
   pToken '('
   c <- lookahead
   if c == ')' then do
-    pChar
+    _ <- pChar
     return []
   else
     pWhitespace *> pSome pArg pSep <* pToken ')'
@@ -210,7 +211,7 @@ pArguments pArg = do
       pWhitespace
       c <- lookahead
       if c == ',' then do
-        pChar
+        _ <- pChar
         pWhitespace
         return True
       else

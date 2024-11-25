@@ -21,6 +21,7 @@ import Helium.CodeGeneration.Core.Rename(coreRename)
 import Helium.CodeGeneration.Core.RemoveAliases(coreRemoveAliases)
 import Helium.CodeGeneration.Core.Saturate(coreSaturate)
 import Helium.CodeGeneration.Core.Strictness(coreStrictness)
+import Prelude hiding (mod)
 
 pipeline :: [(String, NameSupply -> CoreModule -> CoreModule)]
 pipeline =

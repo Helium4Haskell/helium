@@ -46,7 +46,7 @@ pMethod = do
   let tp' = fromMaybe (typeFromFunctionType $ FunctionType (map toArg args) returnType) tp
   case c of
     '{' ->
-      (\(b:bs) -> Method tp' args returnType annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep
+      (\(b:bs) -> Method tp' args returnType annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep --TODO
     '=' -> do
       -- Shorthand for a function that computes a single expression and returns it
       pWhitespace
@@ -63,7 +63,7 @@ pMethod = do
 
       c <- lookahead
       if c == '}' then do
-        pChar
+        _ <- pChar
         return False
       else
         return True
@@ -76,7 +76,7 @@ pMethodArguments quantors = do
   pWhitespace
   c <- lookahead
   if c == ',' then do
-    pChar
+    _ <- pChar
     pWhitespace
     (args, quantors'') <- pMethodArguments quantors'
     return (arg : args, quantors'')

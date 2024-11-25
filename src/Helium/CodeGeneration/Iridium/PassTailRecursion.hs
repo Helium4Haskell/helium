@@ -10,6 +10,7 @@ import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Utils
 import Helium.Lvm.Common.Id (Id, NameSupply, freshId, freshIdFromId, mapWithSupply) --, splitNameSupply
 import Helium.Lvm.Core.Type
+import Prelude hiding (mod)
 
 passTailRecursion :: NameSupply -> Module -> Module
 passTailRecursion = mapMethodsWithSupply transformMethod
@@ -47,7 +48,7 @@ transformMethod supply decl@(Declaration name vis mod customs (Method tp params 
     tails = mapMaybe snd blocks
     (entryName', supply') = freshId supply
     entry = Block entryName' (Jump entryName)
-    Block _ entryInstr' : bs' = map (transformBlock entryName) blocks
+    Block _ entryInstr' : bs' = map (transformBlock entryName) blocks --TODO
     b' = Block entryName $ phis entryInstr'
 
     -- The phi nodes
@@ -61,7 +62,7 @@ transformMethod supply decl@(Declaration name vis mod customs (Method tp params 
     renameParam _ (Left q) = Left q
 
 createPhis :: BlockName -> [Either Quantor Local] -> [Either Quantor Local] -> [TailRecursion] -> Instruction -> Instruction
-createPhis entryName [] [] tails = id
+createPhis entryName [] [] tails = id --TODO
 createPhis entryName (Left _ : args) (Left _ : args') tails = createPhis entryName args args' $ map tailRecursionDrop tails
 createPhis entryName (Right (Local arg t) : args) (Right (Local arg' _) : args') tails = phi . createPhis entryName args args' tails'
   where
@@ -73,7 +74,7 @@ createPhis entryName (Right (Local arg t) : args) (Right (Local arg' _) : args')
 
 -- Remove first argument from tails
 tailRecursionDrop :: TailRecursion -> TailRecursion
-tailRecursionDrop (TailRecursion block (_:vs)) = TailRecursion block vs
+tailRecursionDrop (TailRecursion block (_:vs)) = TailRecursion block vs --TODO
 
 transformBlock :: Id -> (Block, Maybe TailRecursion) -> Block
 transformBlock _ (b, Nothing) = b

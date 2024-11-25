@@ -128,7 +128,7 @@ mainLexer' useTutor input@(c:cs)
 lexName :: (Char -> Bool) -> (String -> Lexeme) -> 
                 (String -> Lexeme) -> [String] -> Lexer
 lexName predicate normal reserved reserveds cs = do
-    let (name@(first:_), rest) = span predicate cs
+    let (name@(first:_), rest) = span predicate cs --TODO fix this warning
         lexeme = if name `elem` reserveds
                  then reserved name 
                  else normal   name
@@ -161,7 +161,7 @@ lexQualOrCon :: Lexer
 lexQualOrCon input = let
     firstLex = parse (parserParsedRest qualOrConParser) "" input
     in do
-    let (name@(first:_), rest) = either (const ("",input)) id firstLex
+    let (name@(first:_), rest) = either (const ("",input)) id firstLex --TODO fix this warning
     when ((isSymbol first || first == ':') && name `contains` "--") $ do
         pos <- getPos
         lexerWarning CommentOperator pos

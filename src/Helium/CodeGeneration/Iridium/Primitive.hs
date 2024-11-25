@@ -53,7 +53,7 @@ primBinaryDouble name g = prim name [typeFloat, typeFloat] (typeFloat) f
 primCompare :: String -> Type -> (LLVM.Operand -> LLVM.Operand -> LLVM.InstructionMetadata -> LLVM.Instruction) -> (Id, Primitive)
 primCompare name t g = prim' name [Quantor $ Just "a"] [t, t, TVar 0, TVar 0] (TVar 0) f
   where
-    f target supply [a, b, whenTrue, whenFalse] var =
+    f target supply [a, b, whenTrue, whenFalse] var = --TODO
       [ bool LLVM.:= g a b []
       , var LLVM.:= LLVM.Select (LLVM.LocalReference (LLVM.IntegerType 1) bool) whenTrue whenFalse []
       ]
@@ -125,7 +125,7 @@ primitiveList =
   , prim "int16_neg" [typeInt16] typeInt16
     $ \_ _ [operand] name -> [name LLVM.:= LLVM.Sub False False (LLVM.ConstantOperand $ LLVMConstant.Int 16 0) operand []]
   , prim "int16_add" [typeInt16, typeInt16] typeInt16
-    $ \_ _ [left, right] name -> [name LLVM.:= LLVM.Add False False left right []]
+    $ \_ _ [left, right] name -> [name LLVM.:= LLVM.Add False False left right []] --TODO
 
   -- Conversion
   , prim "float64_to_int" [typeFloat] typeInt $ compileConversion LLVM.FPToSI (\target -> LLVM.IntegerType $ fromIntegral $ targetWordSize target)
@@ -139,10 +139,10 @@ findPrimitive :: Id -> Primitive
 findPrimitive = (`findMap` primitives)
 
 compilePtrAdd :: PrimitiveCompiler
-compilePtrAdd _ _  [pointer, inc] name = [ name LLVM.:= LLVM.GetElementPtr False pointer [inc] [] ]
+compilePtrAdd _ _  [pointer, inc] name = [ name LLVM.:= LLVM.GetElementPtr False pointer [inc] [] ] --TODO
 
 compileRead32 :: PrimitiveCompiler
-compileRead32 target supply [pointer] name =
+compileRead32 target supply [pointer] name = --TODO
   [ namePtr LLVM.:= LLVM.BitCast pointer ptrType []
   , (if is32Bit then name else nameValue) LLVM.:= LLVM.Load False (LLVM.LocalReference ptrType namePtr) Nothing 0 []
   ] ++ if is32Bit then [] else
@@ -155,10 +155,11 @@ compileRead32 target supply [pointer] name =
 
 typeVoidPtr :: LLVM.Type
 typeVoidPtr = LLVM.PointerType (LLVM.IntegerType 8) (LLVM.AddrSpace 0)
+typeVoidPtrPtr :: LLVM.Type
 typeVoidPtrPtr = LLVM.PointerType typeVoidPtr (LLVM.AddrSpace 0)
 
 compileThunkCall :: PrimitiveCompiler
-compileThunkCall target supply [fn, arg] name =
+compileThunkCall target supply [fn, arg] name = --TODO
   [ nameFn LLVM.:= LLVM.BitCast fn fnType []
   , name LLVM.:= LLVM.Call 
     { LLVM.tailCallKind = Nothing
@@ -177,7 +178,7 @@ compileThunkCall target supply [fn, arg] name =
     (nameFn, _) = freshName supply
 
 compileThunkEval :: PrimitiveCompiler
-compileThunkEval target supply [thunkVoid, given] name =
+compileThunkEval target supply [thunkVoid, given] name = --TODO
   [ nameThunk LLVM.:= LLVM.BitCast thunkVoid thunkType []
   , nameFnPtrPtr LLVM.:= getElementPtr operandThunk [0, 2]
   , nameRemainingPtr LLVM.:= getElementPtr operandThunk [0, 3]
@@ -219,7 +220,7 @@ compileThunkEval target supply [thunkVoid, given] name =
     (nameValuePtr, _) = freshName supply5
 
 compileThunkOversaturatedSelf :: PrimitiveCompiler
-compileThunkOversaturatedSelf target supply [thunkVoid, argumentCount, argumentLast] name =
+compileThunkOversaturatedSelf target supply [thunkVoid, argumentCount, argumentLast] name = --TODO
   [ nameThunk LLVM.:= LLVM.BitCast thunkVoid thunkType []
   , nameFnPtrPtr LLVM.:= getElementPtr operandThunk [0, 2]
   , nameRemainingPtr LLVM.:= getElementPtr operandThunk [0, 3]
@@ -258,7 +259,7 @@ compileThunkOversaturatedSelf target supply [thunkVoid, argumentCount, argumentL
 
 -- Updates a thunk after evaluating its target / next thunk.
 compileThunkUpdateTarget :: PrimitiveCompiler
-compileThunkUpdateTarget target supply [thunkVoid, targetVoid, given] name =
+compileThunkUpdateTarget target supply [thunkVoid, targetVoid, given] name = --TODO
   [ nameThunk LLVM.:= LLVM.BitCast thunkVoid thunkType []
   , nameTargetThunk LLVM.:= LLVM.BitCast targetVoid thunkType []
 
@@ -297,7 +298,7 @@ compileThunkUpdateTarget target supply [thunkVoid, targetVoid, given] name =
     operandTarget = LLVM.LocalReference thunkType nameTargetThunk
 
 compileThunkExtract :: Int -> PrimitiveCompiler
-compileThunkExtract index target supply [thunkVoid] name =
+compileThunkExtract index target supply [thunkVoid] name = --TODO
   [ nameThunk LLVM.:= LLVM.BitCast thunkVoid thunkType []
   , namePtr LLVM.:= getElementPtr (LLVM.LocalReference thunkType nameThunk) [0, index]
   , nameLoad LLVM.:= LLVM.Load False (LLVM.LocalReference (pointer tp) namePtr) Nothing 0 []
@@ -323,7 +324,7 @@ compileThunkExtract index target supply [thunkVoid] name =
 -- 2 when it is oversaturated, but its target is not saturated,
 -- 3 when it is oversaturated, and its target is (over)saturated
 compileThunkGetType :: PrimitiveCompiler
-compileThunkGetType target supply [remaining, given] name =
+compileThunkGetType target supply [remaining, given] name = --TODO
   -- Thunk is in WHNF (type 0) if remaining > 0
   [ nameWhnf LLVM.:= LLVM.ICmp IntegerPredicate.SGT remaining (LLVM.ConstantOperand $ LLVMConstant.Int 16 0) []
   -- Thunk is exactly saturated (type 1) if remaining == 0
@@ -347,7 +348,7 @@ compileThunkGetType target supply [remaining, given] name =
     (name123, _) = freshName supply5
 
 compileThunkAllocCopy :: PrimitiveCompiler
-compileThunkAllocCopy target supply [fieldCount, base] name =
+compileThunkAllocCopy target supply [fieldCount, base] name = --TODO
   [ nameFieldSize LLVM.:= LLVM.Mul False False fieldCount (LLVM.ConstantOperand $ LLVMConstant.Int 16 $ fromIntegral $ (targetWordSize target `div` 8) + 1) []
   , nameSize LLVM.:= LLVM.Add False False (LLVM.LocalReference int16Type nameFieldSize) (LLVM.ConstantOperand $ LLVMConstant.Int 16 $ fromIntegral $ (targetWordSize target * 3 `div` 8) + 4) []
   , nameSize32 LLVM.:= LLVM.ZExt (LLVM.LocalReference (LLVM.IntegerType 16) nameSize) (LLVM.IntegerType 32) []
@@ -381,7 +382,7 @@ compileThunkAllocCopy target supply [fieldCount, base] name =
     (nameSize32, _) = freshName supply''
 
 compileThunkWrite :: PrimitiveCompiler
-compileThunkWrite buildTarget supply [thunkVoid, header, target, fn, remaining, given] name =
+compileThunkWrite buildTarget supply [thunkVoid, header, target, fn, remaining, given] name = --TODO
   [ nameThunk LLVM.:= LLVM.BitCast thunkVoid thunkType []
   , getPointer nameHeader [0, 0]
   , getPointer nameTarget [0, 1]
@@ -412,7 +413,7 @@ compileThunkWrite buildTarget supply [thunkVoid, header, target, fn, remaining, 
     (fn', _) = freshName supply6
 
 compileThunkWriteValue :: PrimitiveCompiler
-compileThunkWriteValue buildTarget supply [thunkVoid, value] name =
+compileThunkWriteValue buildTarget supply [thunkVoid, value] name = --TODO
   [ nameThunk LLVM.:= LLVM.BitCast thunkVoid thunkType []
   , getPointer nameFn [0, 2]
   , getPointer nameRemaining [0, 3]
@@ -432,6 +433,6 @@ compileThunkWriteValue buildTarget supply [thunkVoid, value] name =
     (nameValue, _) = freshName supply2
 
 compileConversion :: (LLVM.Operand -> LLVM.Type -> LLVM.InstructionMetadata -> LLVM.Instruction) -> (Target -> LLVM.Type) -> PrimitiveCompiler
-compileConversion instr ty target _ [arg] name =
+compileConversion instr ty target _ [arg] name = --TODO
   [ name LLVM.:= instr arg (ty target) []
   ]

@@ -21,7 +21,7 @@ import Helium.Lvm.Common.Byte(stringFromBytes)
 
 import Helium.Utils.Utils
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
-import Helium.Parser.ParseLibrary
+import Helium.Parser.ParseLibrary hiding (name)
 import Helium.Parser.Lexer(lexer)
 import Helium.Parser.Parser(type_) --, contextAndType
 import Helium.Parser.OperatorTable
@@ -116,7 +116,7 @@ typeSynFromCore quantifiedType = (typeArgs, \args -> fromCore args tp)
     splitForalls t = (0, t)
 
     fromCore :: [Tp] -> Core.Type -> Tp
-    fromCore args (Core.TCon c) = TCon $ show c
+    fromCore args (Core.TCon c) = TCon $ show c --todo
     fromCore args (Core.TAp t1 t2) = TApp (fromCore args t1) (fromCore args t2)
     fromCore args (Core.TVar x) = case args `safeIndex` (typeArgs - 1 - x) of
       Just t -> t
@@ -211,7 +211,7 @@ insertDictionaries _
                                 , declCustoms = cs
                                 } env
                                 | stringFromId ident == "ClassDefinition" = let
-                                    tpVar = map (\(CustomDecl _ [CustomName n']) -> nameFromId n') $ selectCustoms "ClassTypeVariables" cs 
+                                    tpVar = map (\(CustomDecl _ [CustomName n']) -> nameFromId n') $ selectCustoms "ClassTypeVariables" cs  --TODO
                                     functions = map getFunction $ selectCustoms "Function" cs
                                     getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)
                                     getFunction (CustomDecl _ [
@@ -227,10 +227,10 @@ insertDictionaries _
 insertDictionaries _ _ env = env
 
 selectCustomsString ::  String -> [Custom] -> [String]
-selectCustomsString n cs = map (\(CustomDecl _ [CustomBytes values]) -> stringFromBytes values) $ filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n') cs
+selectCustomsString n cs = map (\(CustomDecl _ [CustomBytes values]) -> stringFromBytes values) $ filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n') cs --TODO
 
 selectCustoms :: String -> [Custom] -> [Custom]
-selectCustoms n = filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n')
+selectCustoms n = filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n') --TODO
 
 
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
@@ -247,7 +247,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
          case decl of 
          
            -- functions
-           DeclAbstract { declAccess  = Export n
+           DeclAbstract { declAccess  = Export n --TODO
                         , declModule  = Just importedFromModId
                         , declType    = tp
                         , declCustoms = cs

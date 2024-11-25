@@ -20,7 +20,7 @@ import Data.List(mapAccumL)
 import qualified Helium.Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Utils
 import Helium.CodeGeneration.LLVM.Target
-import Helium.CodeGeneration.LLVM.Struct
+import Helium.CodeGeneration.LLVM.Struct hiding (fieldType, fields)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 

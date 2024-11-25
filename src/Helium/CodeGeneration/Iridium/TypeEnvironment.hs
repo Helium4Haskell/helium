@@ -6,7 +6,7 @@ import Helium.Lvm.Common.IdMap
 import qualified Helium.Lvm.Core.Expr as Core
 import Helium.Lvm.Core.Type
 import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
-import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Data hiding (moduleName)
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Show
 import Data.Maybe(catMaybes, fromMaybe)
@@ -21,7 +21,7 @@ data TypeEnv = TypeEnv
   }
 
 teReturnType :: TypeEnv -> Type
-teReturnType (TypeEnv _ _ _ (Just (_, retType)) _) = retType
+teReturnType (TypeEnv _ _ _ (Just (_, retType)) _) = retType --TODO
 
 valueDeclaration :: TypeEnv -> Id -> ValueDeclaration
 valueDeclaration env name = fromMaybe (error $ "valueDeclaration: identifier " ++ show name ++ " not found in type environment") $ lookupMap name (teValues env)
@@ -46,7 +46,7 @@ data ValueDeclaration
   deriving (Eq, Ord, Show)
 
 typeOf :: TypeEnv -> Id -> Type
-typeOf env name = case valueDeclaration env name of
+typeOf env name = case valueDeclaration env name of --TODO
   ValueFunction _ fntype _ -> fntype
   ValueVariable t -> t
 

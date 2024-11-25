@@ -8,7 +8,7 @@ pCustoms :: Parser [Custom]
 pCustoms = do
   c <- lookahead
   if c == '#' then do
-    pChar
+    _ <- pChar
     custom <- pCustom
     pWhitespace
     (custom :) <$> pCustoms
@@ -21,7 +21,7 @@ pCustom = do
   pWhitespace
   c <- lookahead
   if c == ']' then do
-    pChar
+    _ <- pChar
     return CustomNothing
   else do
     keyword <- pName
@@ -41,7 +41,7 @@ pDeclKind :: Parser DeclKind
 pDeclKind = do
   c <- lookahead
   if c == '@' then do
-    pChar
+    _ <- pChar
     DeclKindCustom <$> pId
   else do
     keyword <- pKeyword

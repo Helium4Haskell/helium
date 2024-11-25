@@ -12,6 +12,7 @@ import Helium.CodeGeneration.Iridium.Parse.Method
 import Helium.CodeGeneration.Iridium.Data
 --import Helium.CodeGeneration.Iridium.Type
 import System.Exit
+import Prelude hiding (mod)
 
 pCustomDeclaration :: Parser CustomDeclaration
 pCustomDeclaration = CustomDeclaration <$ pToken ':' <* pWhitespace <*> pDeclKind

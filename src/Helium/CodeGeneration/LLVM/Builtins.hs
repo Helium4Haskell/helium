@@ -2,7 +2,7 @@ module Helium.CodeGeneration.LLVM.Builtins (builtinDefinitions, eval, alloc, unp
 
 import Helium.CodeGeneration.Iridium.Data as Iridium
 import Helium.CodeGeneration.LLVM.Utils
-import LLVM.AST
+import LLVM.AST hiding (args)
 --import LLVM.AST.Type
 import LLVM.AST.Constant
 import qualified LLVM.AST.Global as Global

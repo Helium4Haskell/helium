@@ -19,7 +19,7 @@ import Data.Char
 import Data.List
 import Helium.Utils.Utils
 import Helium.ModuleSystem.ImportEnvironment
-import Helium.CodeGeneration.CoreUtils
+import Helium.CodeGeneration.CoreUtils hiding (cons, importEnv)
 import qualified Data.Map as M
 import Data.Maybe
 
@@ -257,7 +257,7 @@ nextClauseAlternative =
     Core.Alt Core.PatDefault (Core.Var nextClauseId)
 
 wildcardId, nextClauseId :: Id
-( wildcardId :  nextClauseId : [] ) = map idFromString ["_", "nextClause$"] 
+( wildcardId :  nextClauseId : [] ) = map idFromString ["_", "nextClause$"]  --TODO
 
 case_ :: Id -> Core.Type -> [Core.Alt] -> Core.Expr
 case_ ident tp alts = 
@@ -265,6 +265,7 @@ case_ ident tp alts =
         (Core.Strict (Core.Bind (Core.Variable ident tp) (Core.Var ident)))      -- let! id = id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
 
+toTp :: Top.Quantification q a -> a
 toTp (Top.Quantification (_, _, tp)) = tp
 
 constructorFieldTypes :: ImportEnvironment -> Quantors -> Name -> Core.Type -> ([Core.Type], [Core.Type])

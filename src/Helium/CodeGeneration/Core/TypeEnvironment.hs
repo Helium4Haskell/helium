@@ -110,7 +110,7 @@ typeOfId env name = case lookupMap name $ typeEnvGlobalValues env of
 typeOfCoreExpression :: TypeEnvironment -> Expr -> Type
 
 -- Find type of the expression in the Let
-typeOfCoreExpression env (Let binds expr)
+typeOfCoreExpression env (Let binds expr) --TODO
   = typeOfCoreExpression (typeEnvAddBinds binds env) expr
 
 -- All Alternatives of a Match should have the same return type,
@@ -243,7 +243,7 @@ extractFunctionTypeWithArity env arity tp = case typeNormalizeHead env tp of
   _ -> error ("extractFunctionTypeWithArity: expected function type or forall type, got " ++ showType [] tp)
 
 updateFunctionTypeStrictness :: TypeEnvironment -> [Bool] -> Type -> Type
-updateFunctionTypeStrictness _ strictness tp
+updateFunctionTypeStrictness _ strictness tp --TODO
   | all not strictness = tp -- No arguments are strict, type does not change
 updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHead env tp of
   TForall quantor kind tp' -> TForall quantor kind $ updateFunctionTypeStrictness env (strict : strictness) tp'

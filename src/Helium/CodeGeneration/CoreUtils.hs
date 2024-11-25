@@ -44,17 +44,18 @@ import qualified Data.Map as M
 import Helium.Utils.QualifiedTypes (convertClassNameToQualified, convertTpToQualified)
 --import Data.List(isPrefixOf)
 import Helium.ModuleSystem.ImportEnvironment
-import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Utils hiding (isConstructor)
 import Helium.Syntax.UHA_Range
 import Helium.Syntax.UHA_Syntax hiding (Module(..))
 import Helium.Utils.Utils
+import Prelude hiding (error, traverse)
 --import Helium.Syntax.UHA_Syntax ( Name )
 
 lookupBeta :: Int -> TypeInferenceOutput -> Top.Tp
 lookupBeta beta typeOutput = lookupInt beta $ substitutionFromResult $ solveResult typeOutput
 
 custom :: String -> String -> Custom
-custom sort text =
+custom sort text = --has to name shadow
     CustomDecl
         (DeclKindCustom (idFromString sort))
         [CustomBytes (bytesFromString text)]
@@ -401,7 +402,7 @@ addLambdas typeOutput context parent beta name args = case declarationTpScheme t
 addLambdasForQType :: ImportEnvironment -> Quantors -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForQType env quantors (Top.Qualification ([], t)) substitute args expr = addLambdasForType env quantors t substitute args [] expr
 addLambdasForQType env quantors (Top.Qualification (p : ps, t)) substitute (arg:args) expr =
-  Core.Lam False (Core.Variable arg $ substitute $ predicateToCoreType quantors p) $ addLambdasForQType env quantors (Top.Qualification (ps, t)) substitute args expr
+  Core.Lam False (Core.Variable arg $ substitute $ predicateToCoreType quantors p) $ addLambdasForQType env quantors (Top.Qualification (ps, t)) substitute args expr --TODO
 
 addLambdasForType :: ImportEnvironment -> Quantors -> Top.Tp -> (Core.Type -> Core.Type) -> [Id] -> [Core.Type] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForType _ quantors retType substitute [] accumArgTypes expr = expr (reverse accumArgTypes) $ substitute $ typeToCoreType quantors retType

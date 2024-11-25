@@ -29,9 +29,13 @@ instance HasMessage LexerError where
     getRanges (LexerError pos _) =
         [ sourcePosToRange pos ]
     getMessage (LexerError _ info) = 
-        let (line:rest) = showLexerErrorInfo info
-        in MessageOneLiner (MessageString line) :
-            [ MessageHints Texts.hint [ MessageString s | s <- rest ] ]
+        case showLexerErrorInfo info of
+            (line:rest) ->
+                MessageOneLiner (MessageString line) :
+                [ MessageHints Texts.hint [ MessageString s | s <- rest ] ]
+            [] ->
+                [MessageOneLiner (MessageString "No error information")]
+
 
 sourcePosToRange :: SourcePos -> Range
 sourcePosToRange pos = 
@@ -108,9 +112,12 @@ instance HasMessage LexerWarning where
     getRanges (LexerWarning pos _) =
         [ sourcePosToRange pos ]
     getMessage (LexerWarning _ info) = 
-        let (line:rest) = showLexerWarningInfo info
-        in MessageOneLiner (MessageString (Texts.warning ++ ": " ++ line)) :
-            [ MessageHints Texts.hint [ MessageString s | s <- rest ] ]
+        case showLexerWarningInfo info of
+            (line:rest) ->
+                MessageOneLiner (MessageString line) :
+                [ MessageHints Texts.hint [ MessageString s | s <- rest ] ]
+            [] ->
+                [MessageOneLiner (MessageString "No warning information")]
 
 data LexerWarning =
     LexerWarning SourcePos LexerWarningInfo

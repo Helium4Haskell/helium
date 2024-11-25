@@ -131,7 +131,7 @@ fixRecursiveNewtypes importEnv = M.foldrWithKey go importEnv $ typeConstructors 
         = env{ valueConstructors = M.insert constructorName (parent, tpScheme, False) $ M.insert (nameFromString $ getOnlyName constructorName) (parent, tpScheme, False) $ valueConstructors env }
       where
         fieldType :: Tp -> Tp
-        fieldType (TApp (TApp (TCon "->") tp) _) = tp
+        fieldType (TApp (TApp (TCon "->") tp) _) = tp --Unsure if needed
         fieldtype = internalError "ImportEnvironment" "fixRecursiveNewtypes" "Expected function type"
 
         recursive :: Tp -> Bool

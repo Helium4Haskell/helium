@@ -87,7 +87,7 @@ eqFunction env dictType dataType typeArgs constructors =
              -- \$fstArg $sndArg ->
 
 fstArg, sndArg :: Id
-[fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"]
+[fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"] --TODO
 
 makeAlt :: ImportEnvironment -> Core.Type -> M.Map UHA.Name Core.Type -> UHA.Constructor -> Alt
 makeAlt env altType typeArgs constructor =

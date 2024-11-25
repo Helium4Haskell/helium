@@ -9,6 +9,7 @@ import Helium.Lvm.Core.Type
 import Data.Maybe
 import Data.List
 import System.Exit
+import Prelude hiding (mod)
 
 data Location
   = DeclareLocal

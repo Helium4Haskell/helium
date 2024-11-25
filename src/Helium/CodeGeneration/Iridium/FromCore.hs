@@ -32,6 +32,7 @@ import Helium.CodeGeneration.Iridium.TypeEnvironment
 import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.FromCoreImports
 import Helium.CodeGeneration.Iridium.Utils
+import Prelude hiding (mod)
 
 fromCore :: FileCache -> NameSupply -> Core.CoreModule -> IO Module
 fromCore cache supply mod@(Core.Module name _ _ dependencies decls) = do
@@ -97,7 +98,7 @@ dataTypeFromCoreDecl consMap decl@Core.DeclCustom{}
 dataTypeFromCoreDecl _ _ = []
 
 dataTypeConFromCoreDecl :: Core.CoreDecl -> IdMap [Declaration DataTypeConstructorDeclaration] -> IdMap [Declaration DataTypeConstructorDeclaration]
-dataTypeConFromCoreDecl decl@Core.DeclCon{} = case find isDataName (Core.declCustoms decl) of
+dataTypeConFromCoreDecl decl@Core.DeclCon{} = case find isDataName (Core.declCustoms decl) of --TODO
     Just (Core.CustomLink dataType _) -> insertMapWith dataType [con] (con :)
     Nothing -> id
   where
@@ -125,7 +126,7 @@ toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Core.Expr -> Method
 toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
-    createArgument (Left quantor) _ = Left quantor
+    createArgument (Left quantor) _ = Left quantor --TODO
     createArgument (Right t) (Right (Core.Variable name _)) = Right $ Local name t
     (args, expr') = consumeLambdas expr
     returnType = Core.typeOfCoreExpression (teCoreEnv env') expr'
@@ -205,7 +206,7 @@ toInstruction supply env continue match@(Core.Match x alts) =
               +> toInstruction supply'' env' (head continues) expr
           )
       Core.Alt (Core.PatCon (Core.ConId con) _ _) _ ->
-        let ValueConstructor constructor = findMap con (teValues env)
+        let ValueConstructor constructor = findMap con (teValues env) --TODO
         in transformCaseConstructor supply'' env continues x (constructorDataType constructor) alts
       Core.Alt (Core.PatLit (Core.LitInt _ _)) _ -> transformCaseInt supply'' env continues x alts
       Core.Alt (Core.PatLit _) _ -> error "Match on float literals is not supported"
@@ -411,14 +412,14 @@ transformCaseInt supply env continues name alts = (length bs, Partial (Case var 
   where
     (supply1, supply2) = splitNameSupply supply
     var = resolveVariable env name
-    c@(CaseInt bs _) = gatherCaseIntAlts branches
+    c@(CaseInt bs _) = gatherCaseIntAlts branches --TODO
     branches :: [(Maybe Int, BlockName)]
     blocks :: [[Block]]
     (branches, blocks) = unzip $ mapWithSupply (`transformAltInt` env) supply2 $ zip alts continues 
 
 gatherCaseIntAlts :: [(Maybe Int, BlockName)] -> Case
 gatherCaseIntAlts ((Nothing, block) : _) = CaseInt [] block
-gatherCaseIntAlts [(Just _, block)] = CaseInt [] block -- Promote last branch to the `otherwise` branch.
+gatherCaseIntAlts [(Just _, block)] = CaseInt [] block -- Promote last branch to the `otherwise` branch. --TODO
 gatherCaseIntAlts ((Just value, block) : xs) = CaseInt ((value, block) : alts) def
   where
     CaseInt alts def = gatherCaseIntAlts xs
@@ -436,7 +437,7 @@ transformAlt :: NameSupply -> TypeEnv -> Continue -> Variable -> DataTypeConstru
 transformAlt supply env continue var con@(DataTypeConstructor _ tp) instantiation args expr = 
   let
     FunctionType fields _ = extractFunctionTypeNoSynonyms $ Core.typeApplyList tp instantiation
-    locals = zipWith (\name (Right t) -> Local name t) args fields
+    locals = zipWith (\name (Right t) -> Local name t) args fields --TODO
     env' = expandEnvWithLocals locals env
   in
     Match var (MatchTargetConstructor con) instantiation (map Just args)
@@ -452,7 +453,7 @@ transformCaseConstructor supply env continues varName dataType alts = (length al
     (alts', blocks) = gatherCaseConstructorAlts supply2 env continues constructors var alts
 
 gatherCaseConstructorAlts :: NameSupply -> TypeEnv -> [Continue] -> [DataTypeConstructor] -> Variable -> [Core.Alt] -> ([(DataTypeConstructor, BlockName)], [Block])
-gatherCaseConstructorAlts _ _ _ _ _ [] = ([], [])
+gatherCaseConstructorAlts _ _ _ _ _ [] = ([], []) --TODO
 gatherCaseConstructorAlts supply env (continue:_) remaining _ (Core.Alt Core.PatDefault expr : _) = (map (\con -> (con, blockName)) remaining, Block blockName instr : blocks)
   where
     (blockName, supply') = freshIdFromId idMatchDefault supply
@@ -476,7 +477,7 @@ bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg 
     target :: BindTarget
     target = case apOrCon of
       Left (Core.ConId con) ->
-        let ValueConstructor constructor = valueDeclaration env con
+        let ValueConstructor constructor = valueDeclaration env con --TODO
         in BindTargetConstructor constructor
       Left (Core.ConTuple arity) -> BindTargetTuple arity
       Right fn -> case resolveFunction env fn of

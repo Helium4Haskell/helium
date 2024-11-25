@@ -89,7 +89,7 @@ unQualifyName = fromQualName . convertMap . getNameEnvironmentInts
 
 -- Unqualify a name based on a ClassNameEnvironment
 unQualifyClassName :: ClassNameEnvironment -> Name -> Name
-unQualifyClassName = fromQualName . convertMap . M.map (\x -> (0, x, 0))
+unQualifyClassName = fromQualName . convertMap . M.map (\x -> ((0 :: Integer), x, (0 :: Integer)))
 
 -- Unqualify Top types
 unqualifyTpScheme :: M.Map Name (a, Name, b) -> TpScheme -> TpScheme

@@ -35,6 +35,7 @@ import Helium.CodeGeneration.Core.ReduceThunks (isCheap)
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Either (lefts)
 import Data.List (unzip4)
+import Prelude hiding (mod)
 
 data Env = Env TypeEnvironment (IdMap Id)
 type Scope = [Either Quantor Variable]
@@ -132,7 +133,7 @@ liftExpr supply scope expr env = (renameInSimpleExpr env expr, [])
 
 -- Renames according to Env. Works on expressions consisting of Ap, Var, Con and Lit nodes.
 renameInSimpleExpr :: Env -> Expr -> Expr
-renameInSimpleExpr env (Var name) = Var $ rename env name
+renameInSimpleExpr env (Var name) = Var $ rename env name --TODO
 renameInSimpleExpr env (Ap e1 e2) = Ap (renameInSimpleExpr env e1) (renameInSimpleExpr env e2)
 renameInSimpleExpr env (ApType e t) = ApType (renameInSimpleExpr env e) t
 renameInSimpleExpr env e@(Con _) = e

@@ -8,6 +8,7 @@ import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.ConstructorLayout(constructorLayout, ConstructorLayout)
 import qualified LLVM.AST as AST
 import Helium.Lvm.Common.IdMap
+import Prelude hiding (mod)
 
 data Env = Env
   { envTarget :: Target

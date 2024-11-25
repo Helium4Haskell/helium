@@ -116,7 +116,7 @@ renderTypesInRight table =
       hd@(q1, l1, r1) : tl@((q2, l2, r2) : rest)
         -> case (maybeQType r1, maybeQType r2) of
               (Just tp1, Just tp2) -> 
-                 let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
+                 let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2] --figure out how to do exhaustive matches
                      render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 tableWidthRight
                  in (q1, l1, MessageType (toTpScheme (TCon (render doc1))))
                   : (q2, l2, MessageType (toTpScheme (TCon (render doc2))))

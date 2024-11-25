@@ -26,6 +26,7 @@ import Helium.Lvm.Common.Id
 import Helium.Lvm.Common.IdMap
 import Helium.Lvm.Common.IdSet
 import Helium.Lvm.Core.Type
+import Prelude hiding (mod)
 
 passDeadCode :: NameSupply -> Module -> Module
 passDeadCode supply mod = mod{ moduleMethods = methods, moduleAbstractMethods = abstracts }
@@ -177,7 +178,7 @@ constraintToState _ (CImplies var vars) = addImplies var vars
 constraintToState argMap (CArgument ret fn argIndex value) = case lookupMap fn argMap of
   Just args
     | argIndex < length args ->
-      let Right argName = args !! argIndex
+      let Right argName = args !! argIndex --TODO
       in addTwoImplies argName ret value
   _ -> addImplies ret [value]
 constraintToState _ (CBindCount var count) = addBindCount var count
@@ -188,7 +189,7 @@ solve s@(State _ _ _ []) = s
 solve s = solve (solveStep s)
 
 solveStep :: State -> State
-solveStep (State live implies bindCount (var : worklist)) =
+solveStep (State live implies bindCount (var : worklist)) = --TODO
   foldr addLive (State live implies bindCount worklist) implied
   where
     implied :: [Id]
@@ -212,7 +213,7 @@ transformMethod supply res (Declaration name vis mod customs (Method tp args ret
   where
     (_, tp') = transformType res name (length $ filter isRight args) tp
     args' = map fst $ filter snd $ zip args $ preservedArguments res name
-    b' : bs' = mapWithSupply transformBlock supply $ b : bs
+    b' : bs' = mapWithSupply transformBlock supply $ b : bs --TODO
     transformBlock s (Block blockName instr) = Block blockName $ transformInstruction s res instr
 
 transformInstruction :: NameSupply -> Result -> Instruction -> Instruction

@@ -25,7 +25,7 @@ import           Helium.Lvm.Core.Parsing.Token         ( Token
 import           Helium.Lvm.Core.Parsing.Lexer
 import           Helium.Lvm.Core.Type
 import           Helium.Lvm.Core.Utils
-import           Prelude                 hiding ( lex )
+import           Prelude                 hiding (mod, lex )
 import           Text.ParserCombinators.Parsec
                                          hiding ( satisfy )
 

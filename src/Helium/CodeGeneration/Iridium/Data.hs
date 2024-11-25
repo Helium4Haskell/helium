@@ -23,6 +23,7 @@ import Data.Either (isLeft, isRight)
 
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primType)
+import Prelude hiding (mod)
 
 type BlockName = Id
 

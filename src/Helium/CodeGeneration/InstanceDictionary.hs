@@ -8,18 +8,19 @@ import Helium.Lvm.Core.Utils (createFunction)
 import Helium.Lvm.Common.Id
 import Helium.Lvm.Common.Byte
 
-import Helium.CodeGeneration.CoreUtils
+import Helium.CodeGeneration.CoreUtils hiding (var)
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 import Helium.Top.Top.Types
-import Control.Arrow
+import Control.Arrow hiding (first)
 
 import qualified Data.Map as M
 
 import Data.Maybe
 import Data.List
+import Prelude hiding (mod)
 
 --import Text.PrettyPrint.Leijen (pretty)
 
@@ -167,7 +168,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
     }
     where
         name = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
-        typeVariables = map (\(name, idx) -> let TVar beta = lookupBeta idx typeOutput in (name, beta)) typeVariables'
+        typeVariables = map (\(name, idx) -> let TVar beta = lookupBeta idx typeOutput in (name, beta)) typeVariables' --TODO
         (declValue, declType) = createFunction quantors instanceSuperClassVariables dict dictType
         quantors = map (\(name, idx) -> (Core.Quantor $ Just $ getNameName name)) typeVariables
         functions = combineDeclIndex combinedNames whereDecls
@@ -187,13 +188,13 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
                 resolveSuperInstance (n, var)
                         -- check if the required class is already an existing parameter
                         | (n, fst $ fromJust (find (\x -> snd x == var) parentMapping)) `elem` map (\(a, b) -> (a, getNameName b)) instanceSuperClass && n == cName= let
-                                    Just tvar = find (\(_, cn) -> cn == var) parentMapping
+                                    Just tvar = find (\(_, cn) -> cn == var) parentMapping --TODO
                                 in
                                     Var (idFromString $ "$instanceDict" ++ cName ++ "$" ++ fst tvar)
                         | otherwise = let
                                 -- get all the available super classes
                                 repInstanceSuperClass = filter (\(_, v) -> getNameName v == rVar) instanceSuperClass
-                                rVar = fst $ fromJust $find (\(_, cn) -> cn == var) parentMapping
+                                rVar = fst $ fromJust $ find (\(_, cn) -> cn == var) parentMapping
                                 shortestPath :: [[a]] -> [a]
                                 shortestPath [x] = x
                                 shortestPath (x:xs) = let
@@ -284,7 +285,7 @@ constructClassMemberCustomDecl env name (Just (typevars, members)) _ = typeVarsD
                             superClassesDecl :: [Custom]
                             superClassesDecl =
                                 let
-                                    Just classDef = M.lookup (getNameName name) (classEnvironment env)
+                                    Just classDef = M.lookup (getNameName name) (classEnvironment env) --TODO
                                     conv :: String -> Custom
                                     conv super = CustomDecl (DeclKindCustom $ idFromString "SuperClass") [CustomName $ idFromString super]
                                 in map conv $ fst classDef

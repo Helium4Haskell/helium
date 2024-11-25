@@ -6,12 +6,13 @@ import Data.List (find)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Either (partitionEithers) --isRight, 
 import Helium.Lvm.Common.Id
-import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Data hiding (moduleName)
 --import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.FileCache
 import qualified Helium.Lvm.Core.Expr as Core
 import qualified Helium.Lvm.Core.Module as Core
 import System.Exit
+import Prelude hiding (mod)
 
 fromCoreImports :: FileCache -> [Core.CoreDecl] -> IO ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)])
 fromCoreImports cache decls = do

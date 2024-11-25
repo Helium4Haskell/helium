@@ -11,11 +11,11 @@ module Helium.Lvm.Core.Type
    , freshQuantorName, arityFromType, typeUnit, typeBool
    , typeToStrict, typeNotStrict, typeIsStrict, typeSetStrict, typeConFromString, typeFunction
    , typeSubstitute, typeTupleElements, typeRemoveArgumentStrictness, typeReindex, typeReindexM, typeWeaken, typeApply
-   , typeSubstitutions, typeExtractFunction, typeApply, typeApplyList, dictionaryDataTypeName
+   , typeSubstitutions, typeExtractFunction, typeApplyList, dictionaryDataTypeName
    ) where
 
 import Helium.Lvm.Common.Id
-import Text.PrettyPrint.Leijen hiding ((<$>), (<*>))
+import Text.PrettyPrint.Leijen hiding ((<$>))
 
 import Data.Functor.Identity
 
@@ -60,6 +60,7 @@ data IntType
 instance Show IntType where
   show IntTypeInt = "Int"
   show IntTypeChar = "Char"
+  show IntTypeInt16 = "Int16"
 
 data Kind = KFun !Kind !Kind
           | KStar

@@ -5,6 +5,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.Lvm.Common.Id (Id, idFromString, stringFromId)
 import qualified Helium.Lvm.Core.Module as Core
+import Prelude hiding (mod)
 --import qualified Helium.Lvm.Core.Type as Core
 
 toAbstractModule :: Module -> Core.Module v

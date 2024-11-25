@@ -38,7 +38,7 @@ type ModuleDecls = ( [Name]         -- normal values
                     )
 
 chaseImports :: (Id -> IO Core.CoreModule) -> Module -> IO [(Name, [Core.CoreDecl], ModuleDecls)]
-chaseImports resolve fromModule = 
+chaseImports resolve fromModule =
     let coreImports   = EID.coreImportDecls_Syn_Module $ EID.wrap_Module (EID.sem_Module fromModule) EID.Inh_Module -- Expand imports
         -- findModule    = searchPath lvmPath ".iridium" . stringFromId
         doImport :: ImportList -> IO (Name, [Core.CoreDecl], ModuleDecls)
@@ -100,12 +100,12 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
 
     conParentName Core.DeclCon{Core.declCustoms=(_:Core.CustomLink x _:_)} = x
     conParentName _ = dummyId
-    
+
     -- Very weird. Had to add stictness everywhere where the oldname is used ($! and seq)
     -- I really have no clue why, but if you remove it, helium will loop and crash.
     localAddQualified :: Bool -> Name -> Core.CoreDecl -> [Core.CoreDecl] -> [Core.CoreDecl]
-    localAddQualified qual as decl decls = 
-        let oldname    = case Core.declAccess decl of 
+    localAddQualified qual as decl decls =
+        let oldname    = case Core.declAccess decl of
                 Core.Export n -> stringFromId n
                 Core.Private  -> intErr "Expected an exported declaration"
             -- stringFromId $ (Core.declAccess decl)
@@ -118,13 +118,13 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
     toQualified (Name_Identifier _ qs _ n) declname = seq declname $ intercalate "." $ qs ++ [n, declname]
     toQualified _ _ = intErr "Can only qualify module names"
 
-    isImported :: Bool -> Core.CoreDecl -> Bool  
-    isImported hiding decl = 
+    isImported :: Bool -> Core.CoreDecl -> Bool
+    isImported hiding decl =
         let name  = Core.declName decl
             -- if it is hiding, we do not want to import if it is specified in the list
             willImport elemIdSet = if hiding then not elemIdSet else elemIdSet
-        in                         
-        case decl of 
+        in
+        case decl of
             -- functions, record vield names or class functions
             Core.DeclAbstract { } -> "show" `isPrefixOf` stringFromId name ||
                 willImport (elemSet name values || elemSet name confieldormethods)
@@ -138,19 +138,21 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
             Core.DeclCustom { Core.declKind    = Core.DeclKindCustom ident }
             -- Type decl can never be hiden
                         | stringFromId ident == "typedecl"  -> True
-                        | stringFromId ident == "data" || stringFromId ident == "typedecl" 
+                        | stringFromId ident == "data" || stringFromId ident == "typedecl"
                             -> willImport $
                                 elemSet name typeorclasses || elemSet name typeorclassesCompl
             -- infix decls
-            Core.DeclCustom { Core.declKind    = Core.DeclKindCustom ident } 
+            Core.DeclCustom { Core.declKind    = Core.DeclKindCustom ident }
                         | stringFromId ident == "infix" -> willImport $ elemSet name values
             -- typing strategies
             Core.DeclCustom { Core.declKind    = Core.DeclKindCustom ident }
                         | stringFromId ident == "strategy" -> True
+            Core.DeclTypeSynonym {} ->
+                willImport $ elemSet name typeorclasses || elemSet name typeorclassesCompl
             Core.DeclCustom  { } ->
                 intErr  ("don't know how to handle DeclCustom: "       ++ stringFromId name)
             Core.DeclValue   { } ->
-                intErr  ("don't know how to handle DeclValue: "        ++ stringFromId name) 
+                intErr  ("don't know how to handle DeclValue: "        ++ stringFromId name)
 
 
 getAllModuleDecl :: [Core.CoreDecl] -> ModuleDecls
@@ -163,7 +165,7 @@ getAllModuleDecl = foldr addToResult ([], [], [])
         getParent decl = intErr ("Can't get parent from constructor " ++ stringFromId (Core.declName decl))
 
         addToResult :: Core.CoreDecl -> ModuleDecls -> ModuleDecls
-        addToResult decl imports@(values, tycons, valcons) = 
+        addToResult decl imports@(values, tycons, valcons) =
             let id' = Core.declName decl
                 name = nameFromId id'
             in
@@ -176,8 +178,8 @@ getAllModuleDecl = foldr addToResult ([], [], [])
                 -- constructors
                 d@Core.DeclCon { } -> let pair = (name, getParent d) in (values, tycons, pair:valcons)
                 -- type constructor import
-                Core.DeclCustom { Core.declKind    = Core.DeclKindCustom ident } 
-                            | stringFromId ident == "data" || stringFromId ident == "typedecl" 
+                Core.DeclCustom { Core.declKind    = Core.DeclKindCustom ident }
+                            | stringFromId ident == "data" || stringFromId ident == "typedecl"
                                 -> (values, name:tycons, valcons)
                 --We don't care about others
                 _ -> imports

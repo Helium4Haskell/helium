@@ -12,7 +12,7 @@ import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.Utils
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
-import LLVM.AST as AST hiding (Struct)
+import LLVM.AST as AST
 import LLVM.AST.CallingConvention
 --import LLVM.AST.Type as Type
 import LLVM.AST.AddrSpace

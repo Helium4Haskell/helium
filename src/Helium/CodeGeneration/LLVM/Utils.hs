@@ -8,8 +8,8 @@
 
 module Helium.CodeGeneration.LLVM.Utils where
 
-import LLVM.AST as AST
-import LLVM.AST.Constant
+import LLVM.AST as AST hiding (indices, address)
+import LLVM.AST.Constant hiding (address, indices) 
 import LLVM.AST.AddrSpace
 import Helium.Lvm.Common.Id(Id, idFromString, stringFromId, NameSupply, freshIdFromId) --freshId, 
 

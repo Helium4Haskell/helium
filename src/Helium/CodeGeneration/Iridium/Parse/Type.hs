@@ -76,26 +76,26 @@ pTypeAtom' quantors = do
   c1 <- lookahead
   case c1 of
     '!' -> do
-      pChar
+      _ <- pChar
       pWhitespace
       typeToStrict <$> pTypeAtom' quantors
     '[' -> do
-      pChar
+      _ <- pChar
       pWhitespace
       c2 <- lookahead
       if c2 == ']' then do
-        pChar
+        _ <- pChar
         return (TCon $ TConDataType $ idFromString "[]")
       else do
         tp <- pType' quantors
         pToken ']'
         return $ TAp (TCon $ TConDataType $ idFromString "[]") tp
     '(' -> do
-      pChar
+      _ <- pChar
       c2 <- lookahead
       case c2 of
         '@' -> do
-          pChar
+          _ <- pChar
           pSymbol "dictionary"
           pWhitespace
           typeClass <- pId
@@ -103,7 +103,7 @@ pTypeAtom' quantors = do
           pToken ')'
           return $ TCon $ TConTypeClassDictionary typeClass
         ')' -> do
-          pChar
+          _ <- pChar
           return $ TCon $ TConTuple 0
         ',' -> do
           commas <- pManySatisfy (== ',')
@@ -149,7 +149,7 @@ pInstantiation :: QuantorNames -> Parser [Type]
 pInstantiation quantors = do
   c <- lookahead
   if c == '{' then do
-    pChar
+    _ <- pChar
     pWhitespace
     tp <- pType' quantors
     pToken '}'

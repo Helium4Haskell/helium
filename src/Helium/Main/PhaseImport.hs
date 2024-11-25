@@ -9,7 +9,7 @@
 module Helium.Main.PhaseImport(phaseImport) where
 
 import Helium.ModuleSystem.GatherImports
-import Helium.Main.CompileUtils
+import Helium.Main.CompileUtils hiding (resolve)
 import Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment)
 import Helium.Syntax.UHA_Syntax
 import Helium.Lvm.Common.Id

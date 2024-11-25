@@ -16,6 +16,7 @@ module Helium.Top.Top.Monad.Select
 import Helium.Top.Top.Util.Embedding
 import Control.Monad.State
 import Control.Monad (liftM, ap)
+import Data.Kind (Type)
 --import Control.Applicative
 
 --------------------------------------------------------
@@ -51,7 +52,7 @@ select = Select
 --------------------------------------------------------
 -- SelectFix Monad
 
-data SelectFix (t :: (* -> *) -> *) (m :: * -> *) a = SelectFix (m a)
+data SelectFix (t :: (Data.Kind.Type -> Data.Kind.Type) -> Data.Kind.Type) (m :: Data.Kind.Type -> Data.Kind.Type) a = SelectFix (m a)
 
 -- To satisfy the 7.10.x proposal:
 instance Monad m => Functor (SelectFix t m) where

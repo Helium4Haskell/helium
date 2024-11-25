@@ -19,7 +19,7 @@ import qualified Data.Map as M
 import Data.List(find)
 import Data.Maybe
 import Helium.Syntax.UHA_Syntax (Name)
-import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Utils hiding (convertPredicate)
 import Helium.Utils.Utils
 
 import Helium.Top.Top.Types
@@ -104,7 +104,7 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
         getSuperClassPredicate prd = fromMaybe (PredicateFunction prd) $ find (\ps' -> isSuperClassPredicate ps' && getPredicateFromPredicateWithSource ps' == prd) availablePredicates
         convertPredicate :: (Predicate -> DictionaryTree) -> PredicateWithSource -> DictionaryTree
         convertPredicate f prd  | hasSuperClassPredicate prd = let
-                                                                 (PredicateSuperInstance prd' pn tv _) = getSuperClassPredicate $ getPredicateFromPredicateWithSource prd 
+                                                                 (PredicateSuperInstance prd' pn tv _) = getSuperClassPredicate $ getPredicateFromPredicateWithSource prd --TODO fix pattern matching
                                                                in BySuperInstance prd' pn tv
                                 | otherwise = f (getPredicateFromPredicateWithSource prd)
     in 
@@ -131,6 +131,6 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                     Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))
                     Just predicates -> 
                         do 
-                            let (TCon instanceName, args) = leftSpine tp
+                            let (TCon instanceName, args) = leftSpine tp --TODO
                             trees <- makeDictionaryTrees classEnv availablePredicates currentClass curPred $ map PredicateFunction predicates
                             return (ByInstance className instanceName args trees)

@@ -113,7 +113,7 @@ copy env operand name tp =
     compiledType = compileType env tp
 
 cast :: NameSupply -> Env -> Operand -> Name -> Core.Type -> Core.Type -> [Named Instruction]
-cast supply env fromOperand toName fromType' toType'
+cast supply env fromOperand toName fromType' toType' --TODO
   -- Thunks to thunk - all thunks have the same type in LLVM, so this cast is a no-op
   | not fromStrict && not toStrict
     = copy env fromOperand toName toType

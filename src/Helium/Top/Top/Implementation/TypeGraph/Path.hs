@@ -5,6 +5,7 @@
 --   Stability    :  provisional
 --   Portability  :  portable
 -----------------------------------------------------------------------------
+{-# LANGUAGE LambdaCase #-}
 
 module Helium.Top.Top.Implementation.TypeGraph.Path where  
 
@@ -141,7 +142,10 @@ tailSharingBy compf thePath =
   rec' (Step a)    = Step a
   rec' (p1 :+: p2) = p1 :+: rec' p2 
   rec' path =  
-     let sharedTail = map (\((p, tl):rest) -> combine (p:map fst rest) tl)
+     let sharedTail = map (\case
+                          ((p, tl):rest) -> combine (p : map fst rest) tl
+                          []             -> error "Unexpected empty list")
+     --let sharedTail = map (\((p, tl):rest) -> combine (p:map fst rest) tl)
                     . groupBy (eqfM `on` snd)
                     . sortBy  (compfM `on` snd)
                     $ [ (p, lastStep p) |  p <- altPath path ]

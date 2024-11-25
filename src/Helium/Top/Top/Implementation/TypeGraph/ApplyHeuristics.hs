@@ -1,4 +1,5 @@
 {-# LANGUAGE MonoLocalBinds, FlexibleContexts, FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 -----------------------------------------------------------------------------
 -- | License      :  GPL
 -- 
@@ -216,7 +217,11 @@ childrenGraph = rec' []
                       cs' <- let f t = do r <- representativeInGroupOf (snd t)
                                           return (r, t)
                              in mapM f cs
-                      let children = map (\((a,b):xs) -> (a,b:map snd xs))
+                      let children = map (\case
+                                             ((a, b):xs) -> (a, b : map snd xs)
+                                             []          -> error "Unexpected empty list") 
+
+                      --let children = map (\((a,b):xs) -> (a,b:map snd xs))
                                    . groupBy ((==) `on` fst)
                                    . sortBy  (compare `on` fst)
                                    $ cs'
@@ -270,7 +275,10 @@ allSubPathsList childList vertex targets = rec' S.empty vertex
       targetPairs vs =
          let p (i, j) =  i `elem` map fst vs
                          && not (i `S.member` without || j `S.member` without)
-         in map (\((i,j):rest) -> (i, j:map snd rest))
+         in map (\case
+                    ((i, j):rest) -> (i, j : map snd rest)
+                    []            -> error "Unexpected empty list")       
+         --in map (\((i,j):rest) -> (i, j:map snd rest))
             . groupBy ((==) `on` fst)
             . sortBy  (compare `on` fst)
             $ filter p childList    

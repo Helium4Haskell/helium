@@ -21,6 +21,7 @@ import Helium.Lvm.Common.IdMap
 import System.Exit
 --import Data.List
 import Text.PrettyPrint.Leijen (pretty)
+import Prelude hiding (mod)
 
 type Location = [String]
 data TypeError = TypeError Location Message
@@ -101,7 +102,7 @@ checkExpression env quantors (Let binds expr) = do
   checkExpression env' quantors expr
 checkExpression env quantors (Match name alts) = do
   scrutinee <- checkId env name
-  ~(tp:tps) <- traverse (\alt -> checkAlt env quantors scrutinee alt @@ "match on variable " ++ show name) alts
+  ~(tp:tps) <- traverse (\alt -> checkAlt env quantors scrutinee alt @@ "match on variable " ++ show name) alts--TODO
   sequence_ $ map (\tp' -> assert env quantors tp tp' @@ "the inferred types of the alts") tps
   return tp
 checkExpression env quantors (Ap e1 e2) = do

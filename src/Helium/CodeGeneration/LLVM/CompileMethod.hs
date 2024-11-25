@@ -23,7 +23,7 @@ import qualified Helium.Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
-import LLVM.AST
+import LLVM.AST hiding (index, args)
 import qualified LLVM.AST.Global as Global
 import LLVM.AST.Visibility
 --import LLVM.AST.CallingConvention
@@ -145,7 +145,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
         , Global.personalityFunction = Nothing
         , Global.metadata = []
         }
-    [BasicBlock _ trampolineInstructions trampolineTerminator] = compileBlock env supplyTrampoline1 $ Iridium.Block (idFromString "entry") $ trampolineBody supplyTrampoline2 name args fnType $ Core.typeToStrict retType
+    [BasicBlock _ trampolineInstructions trampolineTerminator] = compileBlock env supplyTrampoline1 $ Iridium.Block (idFromString "entry") $ trampolineBody supplyTrampoline2 name args fnType $ Core.typeToStrict retType --TODO
 
     thunk :: [Definition]
     thunk

@@ -20,7 +20,7 @@ module Helium.Lvm.Import
 where
 
 
-import           Data.List
+import           Data.List hiding (insert)
 import           Data.Maybe
 import           Helium.Lvm.Common.Id
 import           Helium.Lvm.Common.IdSet
@@ -74,6 +74,8 @@ lvmImportRenameMap = foldl' (flip insert) (emptyMap, emptyMap)
         | otherwise ->
           let typesMap' = insertAssertMap alias name typesMap
           in typesMap' `seq` (valuesMap, typesMap')
+      --possibly incorrect below
+      _ -> (valuesMap, typesMap)
       where
         name = declName decl
 

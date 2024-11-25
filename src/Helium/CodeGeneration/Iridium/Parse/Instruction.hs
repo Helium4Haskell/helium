@@ -23,7 +23,7 @@ pInstruction quantors = do
               pWhitespace
               c <- lookahead
               if c == ',' then do
-                pChar
+                _ <- pChar
                 pWhitespace
                 return True
               else
@@ -39,7 +39,7 @@ pMatchField :: Parser (Maybe Id)
 pMatchField = do
   c <- lookahead
   if c == '_' then do
-    pChar
+    _ <- pChar
     return Nothing
   else
     Just <$ pToken '%' <*> pId

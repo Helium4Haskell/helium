@@ -5,6 +5,7 @@ import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.Lvm.Core.Type
+import Prelude hiding (exp)
 
 pLiteral :: Parser Literal
 pLiteral = do
@@ -21,26 +22,26 @@ pFloat = do
   cMinus <- lookahead
   sign <- case cMinus of
     '-' -> do
-      pChar
+      _ <- pChar
       return (-1)
     _ -> return 1
   int <- pUnsignedInt
   c <- lookahead
   case c of
     '.' -> do
-      pChar
+      _ <- pChar
       decimalStr <- pManySatisfy (\c -> '0' <= c && c <= '9')
       let decimal = foldl (+) 0 $ zipWith (\c i -> fromIntegral (fromEnum c - fromEnum '0') / (10 ^ i)) decimalStr [1..]
       let value = sign * fromIntegral int + decimal
       c2 <- lookahead
       if c2 == 'e' then do
-        pChar
+        _ <- pChar
         exp <- pSignedInt
         return $ value * 10 ^ exp
       else
         return value
     'e' -> do
-      pChar
+      _ <- pChar
       exp <- pSignedInt
       return $ sign * fromIntegral int * 10 ^ exp
     _ -> return $ sign * fromIntegral int

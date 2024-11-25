@@ -41,7 +41,7 @@ module Helium.Lvm.Core.Module
    )
 where
 
-import           Prelude                 hiding ( (<$>) )
+import           Prelude                 hiding (mod, (<$>) )
 import           Helium.Lvm.Common.Byte
 import           Helium.Lvm.Common.Id
 import           Helium.Lvm.Common.IdSet

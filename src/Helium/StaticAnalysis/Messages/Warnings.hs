@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use lambda-case" #-}
 {-| Module      :  Warnings
     License     :  GPL
 
@@ -80,10 +82,12 @@ showWarning warning = case warning of
       )
 
    SimilarFunctionBindings suspect witness ->
-      ( let [n1, n2] = sortNamesByRange [suspect, witness]
-        in MessageString ("Suspicious adjacent functions " ++ (show.show) n1 ++ " and " ++ (show.show) n2)
-      , []
-      )
+    ( case sortNamesByRange [suspect, witness] of
+        [n1, n2] -> MessageString ("Suspicious adjacent functions " ++ show n1 ++ " and " ++ show n2)
+        _        -> error "Expected exactly two names from sortNamesByRange"
+    , []
+    )
+
 
    SuspiciousTypeVariable varName conName ->
       ( MessageString ("Suspicious type variable " ++ (show.show) varName)
@@ -104,12 +108,17 @@ showWarning warning = case warning of
 
    MissingPatterns _ (Just n) _ pss place sym
      | isOperatorName n ->
+          --let name = getNameName n
+          --    text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
+          --           ++ concatMap (\[l, r] -> "\n  " ++ (show.semP) l ++ " " ++ name ++ " "
+          --           ++ (show.semP) r ++ " " ++ sym ++ " ...") pss
+          --in (MessageString text, [])
           let name = getNameName n
               text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-                     ++ concatMap (\[l, r] -> "\n  " ++ (show.semP) l ++ " " ++ name ++ " "
-                     ++ (show.semP) r ++ " " ++ sym ++ " ...") pss
+                    ++ concatMap (\lst -> case lst of
+                        [l, r] -> "\n  " ++ (show.semP) l ++ " " ++ name ++ " " ++ (show.semP) r ++ " " ++ sym ++ " ..."
+                        _      -> "Error") pss 
           in (MessageString text, [])
-
      | otherwise ->
           let name = getNameName n
               text =  "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "

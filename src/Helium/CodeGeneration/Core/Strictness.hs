@@ -10,6 +10,7 @@ import Helium.Lvm.Core.Expr
 import Helium.Lvm.Core.Type
 import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.Lvm.Core.Module
+import Prelude hiding (mod)
 
 coreStrictness :: NameSupply -> CoreModule -> CoreModule
 coreStrictness supply mod@(Module name major minor imports decls) = Module name major minor imports $ mapWithSupply (transformDeclaration env) supply decls

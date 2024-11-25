@@ -16,6 +16,7 @@ module Helium.Top.Top.Implementation.General
 import Helium.Top.Top.Util.Embedding
 import Helium.Top.Top.Util.Empty
 import Helium.Top.Top.Monad.Select
+import Data.Kind (Type)
 
 class (Show s, Empty s) => SolveState s where
    showState     :: s -> String
@@ -44,9 +45,9 @@ allOptions = gets stateOptions
 -- ToDo: kind annotations for And, Simple, Fix
 -- infixr 7 :^:
 
-data And f g   x (m :: * -> *) = Compose (f (g x m) m)      
-data Simple a  x (m :: * -> *) = Simple a x
-data Fix g     x (m :: * -> *) = Fix (g m) x
+data And f g   x (m :: Data.Kind.Type -> Data.Kind.Type) = Compose (f (g x m) m)      
+data Simple a  x (m :: Data.Kind.Type -> Data.Kind.Type) = Simple a x
+data Fix g     x (m :: Data.Kind.Type -> Data.Kind.Type) = Fix (g m) x
 
 --- Empty
 instance Empty (f (g x m) m) => Empty (And f g x m) where 

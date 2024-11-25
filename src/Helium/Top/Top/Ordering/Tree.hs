@@ -125,7 +125,8 @@ spreadTree spreadFunction = fst . rec' M.empty
 
           Spread direction as t ->
              let (tree', set) = rec' fmNew t
-                 fmNew = M.unionWith (++) fm (M.fromList [ (i, [x]) | x <- doSpread, let Just i = spreadFunction x ])
+                 fmNew = M.unionWith (++) fm (M.fromList [ (i, [x]) | x <- doSpread, Just i <- [spreadFunction x] ])
+                 --fmNew = M.unionWith (++) fm (M.fromList [ (i, [x]) | x <- doSpread, let Just i = spreadFunction x ])
                  (doSpread, noSpread) =
                     partition (maybe False (`S.member` set) . spreadFunction) as
              in (Spread direction noSpread tree', set)

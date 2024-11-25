@@ -118,7 +118,7 @@ addLam env args expr
 requiredArgs :: Env -> Expr -> Maybe Type
 requiredArgs env expr
   = case expr of
-      Ap e1 _               -> case requiredArgs env e1 of
+      Ap e1 _               -> case requiredArgs env e1 of --TODO
         Just (TAp (TAp (TCon TConFun) _) t) -> Just t
         Nothing -> Nothing
       ApType e1 t2 -> case requiredArgs env e1 of

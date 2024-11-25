@@ -33,7 +33,7 @@ phaseCodeGeneratorIridium :: NameSupply -> FileCache -> String -> Core.CoreModul
 phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   enterNewPhase "Code generation for Iridium" options
 
-  let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply
+  let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply --TODO
 
   simplified <- desugarCore supplyDesugar coreModule
 
